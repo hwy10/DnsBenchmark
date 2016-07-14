@@ -1,0 +1,10 @@
+[logger]
+path = ../log/dns_benchmark.log
+
+[basic]
+server = 127.0.0.1
+port = 53
+threads = 50
+domain = test.test.com
+request_num = 20
+timeout = 10000
