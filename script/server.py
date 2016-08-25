@@ -38,12 +38,12 @@ if __name__ == "__main__":
 
     ## start server
 
-    server = DnsBenchmarkManager(address=address, authkey=authkey)
+    server = DnsBenchmarkManager(address=('', port), authkey=authkey)
     
     # manager.task = server.dict()
     manager.task = {}
-    manager.task['server'] = config.get("target", "server") if config.has_option("basic", "server") else "127.0.0.1"
-    manager.task['port'] = config.getint("target", "port") if config.has_option("basic", "port") else 53
+    manager.task['server'] = config.get("target", "server") if config.has_option("target", "server") else "127.0.0.1"
+    manager.task['port'] = config.getint("target", "port") if config.has_option("target", "port") else 53
     manager.task['threads'] = config.getint("basic", "threads") if config.has_option("basic", "threads") else 1
     manager.task['domain'] = config.get("basic", "domain") if config.has_option("basic", "domain") else "test.test.com"
     manager.task['request_num'] = config.getint("basic", "request_num") if config.has_option("basic", "request_num") else 10
@@ -73,6 +73,7 @@ if __name__ == "__main__":
     work_file = config.get('basic', 'work_file') if config.has_option('basic', 'work_file') else '/DNSBenchmark/script/client.py'
     sp_list = []
 
+    flag = False
     for client_ip in ip_list:
         client_ip = client_ip.strip()
         if client_ip == '':
@@ -80,6 +81,9 @@ if __name__ == "__main__":
         print "connecting %s@%s" % (ssh_user, client_ip)
         command = "ssh %s@%s docker pull %s; docker run %s python %s %s %s %s" % (ssh_user, client_ip, image_name, image_name, work_file, ip, port, authkey)
         sp_list.append(subprocess.Popen(shlex.split(command)))
+        if not flag:
+            time.sleep(10)
+            flag = True
 
     while True:
         count = 0
