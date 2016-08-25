@@ -48,6 +48,7 @@ if __name__ == "__main__":
     manager.task['domain'] = config.get("basic", "domain") if config.has_option("basic", "domain") else "test.test.com"
     manager.task['request_num'] = config.getint("basic", "request_num") if config.has_option("basic", "request_num") else 10
     manager.task['timeout'] = config.getint("basic", "timeout") if config.has_option("basic", "timeout") else 10000 # microsecond
+    manager.ready_count.init(len(ip_list))
 
     server.start()
     
@@ -73,7 +74,6 @@ if __name__ == "__main__":
     work_file = config.get('basic', 'work_file') if config.has_option('basic', 'work_file') else '/DNSBenchmark/script/client.py'
     sp_list = []
 
-    flag = False
     for client_ip in ip_list:
         client_ip = client_ip.strip()
         if client_ip == '':
@@ -81,9 +81,6 @@ if __name__ == "__main__":
         print "connecting %s@%s" % (ssh_user, client_ip)
         command = "ssh %s@%s docker pull %s; docker run %s python %s %s %s %s" % (ssh_user, client_ip, image_name, image_name, work_file, ip, port, authkey)
         sp_list.append(subprocess.Popen(shlex.split(command)))
-        if not flag:
-            time.sleep(10)
-            flag = True
 
     while True:
         count = 0

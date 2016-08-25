@@ -7,11 +7,18 @@ class DnsBenchmarkManager(SyncManager):
 class ReadyCount:
     count = 0
 
+    ## to match the interface of ValueProxy
+
     def get(self):
         return self.count
 
+    ## to match the interface of ValueProxy
+
     def set(self, value):
         self.count -= 1
+
+    def init(self, value):
+        self.count = value
 
 task = {}
 queue = Queue()

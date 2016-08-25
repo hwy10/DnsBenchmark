@@ -43,17 +43,14 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
     while start_signal.value > 0:
         pass
     
-    print ready_count.get()
     if start_signal.value == 0:
         with start_signal.get_lock():
             if start_signal.value == 0:
                 start_signal.value -= 1
                 ready_count.set(-1)
     
-    print ready_count.get()
     while ready_count.get() > 0:
         pass
-    print ready_count.get()
 
     ## main work
     
