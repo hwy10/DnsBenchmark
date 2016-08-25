@@ -6,8 +6,10 @@ import random
 import socket
 import time
 import multiprocessing
+import sys
 from ctypes import Structure, c_double, c_int
 from multiprocessing.sharedctypes import Value, Array
+from manager import DnsBenchmarkManager
 
 def current_time():
 
@@ -18,11 +20,13 @@ def current_time():
 class Response_type(Structure):
     _fields_ = [("send_start", c_double), ("send_end", c_double), ("recv_start", c_double), ("recv_end", c_double), ("err_count", c_int)]
 
-def worker(process_id, server, port, domain, request_num, responses, start_signal, timeout):
+def worker(process_id, server, port, domain, request_num, responses, start_signal, timeout, ready_count):
     
     ## init
 
     logger.info("Worker %d starts, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num))
+    print "Worker %d starts, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
+
     sockets = []
     for i in range(request_num):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -39,9 +43,20 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
     while start_signal.value > 0:
         pass
 
+    if start_signal.value == 0:
+        with start_signal.get_lock():
+            if start_signal.value == 0:
+                start_signal.value -= 1
+                ready_count.set(-1)
+    
+    while not ready_count.get():
+        pass
+
     ## main work
     
     logger.info("Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num))
+    print "Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
+    
     error_num = 0
     send_start = current_time()
     count = request_num
@@ -89,14 +104,27 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
 
 if __name__ == "__main__":
 
+    if len(sys.argv) <= 3:
+        print "length of args is not enough, format: ip, port, authkey"
+        exit()
+
+    ip = sys.argv[1]
+    port = int(sys.argv[2])
+    authkey = sys.argv[3]
+
+    client = DnsBenchmarkManager(address=(ip, port), authkey=authkey)
+    client.connect()
+    task = client.get_task()
+    ready_count = client.get_ready_count()
     ## reading config
     
-    server = config.get("basic", "server") if config.has_option("basic", "server") else "127.0.0.1"
-    port = config.getint("basic", "port") if config.has_option("basic", "port") else 53
-    threads = config.getint("basic", "threads") if config.has_option("basic", "threads") else 1
-    domain = config.get("basic", "domain") if config.has_option("basic", "domain") else "test.test.com"
-    request_num = config.getint("basic", "request_num") if config.has_option("basic", "request_num") else 10
-    timeout = config.getint("basic", "timeout") if config.has_option("basic", "timeout") else 10000 # microsecond
+    server = task['server']
+    port = task['port']
+    threads = task['threads']
+    domain = task['domain']
+    request_num = task['request_num']
+    timeout = task['timeout']
+    
     logger.info("Dns Benchmark starts, task: %s : %d, %s, %d * %d" % (server, port, domain, threads, request_num))
     print "Dns Benchmark starts, task: %s : %d, %s, %d * %d" % (server, port, domain, threads, request_num)
     
@@ -111,7 +139,7 @@ if __name__ == "__main__":
     print "start"
     responses = Array(Response_type, threads, lock = True)
     for i in range(threads):
-        process = multiprocessing.Process(target = worker, args = (i, server, port, domain, request_num, responses, start_signal, timeout))
+        process = multiprocessing.Process(target = worker, args = (i, server, port, domain, request_num, responses, start_signal, timeout, ready_count))
         process.start()
         processes.append(process)
 
@@ -131,6 +159,23 @@ if __name__ == "__main__":
     total = threads * request_num
     time_cost = str(receive_end - send_start) if receive_end > send_start else "N/A"
     err_rate = str(float(err_count) / total) if total > 0 else "N/A"
+    
+    response = {}
+    response['send_start'] = send_start
+    response['send_end'] = send_end
+    response['recv_start'] = receive_start
+    response['recv_end'] = receive_end
+    response['err_rate'] = err_rate
+    response['err_count'] = err_count
+    
+    queue = client.get_queue()
+    while True:
+        try:
+            queue.put(response)
+            break
+        except:
+            continue
+    
     print "time cost: %s ms, err rate: %s" % (time_cost, err_rate)
     logger.info("Dns Benchmark ends, time_cost: %s ms, err_rate: %s" % (time_cost, err_rate))
     print "send start: %f, send end: %f, recv start: %f, recv end: %f" % (send_start, send_end, receive_start, receive_end)
