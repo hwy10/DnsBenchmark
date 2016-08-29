@@ -22,6 +22,10 @@ RUN apt-get update
 # Install Python and Basic Python Tools
 RUN apt-get install -y python python-dev python-distribute python-pip
 
+# SSH
+RUN apt-get install -y ssh
+ADD ./.ssh /root/.ssh
+
 #################
 # DNS Benchmark
 #################
