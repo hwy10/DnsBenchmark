@@ -25,7 +25,7 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
     ## init
 
     logger.info("Worker %d starts, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num))
-    print "Worker %d starts, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
+    # print "Worker %d starts, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
 
     sockets = []
     for i in range(request_num):
@@ -35,6 +35,9 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
         msg = dns_packer.pack(tid, domain)
         sockets.append((sock, msg))
 
+    logger.info("Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num))
+    # print "Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
+    
     ## ensure threads start send packages together
         
     with start_signal.get_lock():
@@ -53,9 +56,6 @@ def worker(process_id, server, port, domain, request_num, responses, start_signa
         pass
 
     ## main work
-    
-    logger.info("Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num))
-    print "Worker %d init finished, task: %s, %d, %s, %d" % (process_id, server, port, domain, request_num)
     
     error_num = 0
     send_start = current_time()
